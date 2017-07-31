@@ -1,0 +1,5 @@
+- hosts: pruebajavi
+  remote_user: epg
+  become: true
+  roles:
+    - role: ansible-hostname

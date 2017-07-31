@@ -1,0 +1,32 @@
+- name: delete old configuration
+ find:
+   paths: "/etc/sysconfig/network-scripts"
+   patterns: "ifcfg-e*"
+ register: files_to_delete
+ when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+- name: delele old configuration step 2
+ file:
+   path: "{{ item.path }}"
+   state: absent
+ with_items: files_to_delete.files
+ when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+- name: delete old configuration
+ command: rm -rf /etc/sysconfig/network-scripts/ifcfg-e*  
+
+- name: copy interface configuration 
+ copy:
+   src: /etc/ansible/ifcfg-standard
+   dest: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+   owner: root
+   group: root
+   mode: 0644
+ when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+- name: editing file configuration
+ lineinfile: 
+   path: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+   regexp: '^DEVICE.*'
+   line: 'DEVICE={{ansible_default_ipv4.alias}}'
+ when: net_restart_result|failed and ansible_os_family == "RedHat"

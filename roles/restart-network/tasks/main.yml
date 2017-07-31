@@ -1,0 +1,25 @@
+- name: check static IP
+  #lineinfile:
+    #path: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+    #regexp: '^IPADDR'
+    #line: 'IPADDR={{facter_ipaddress}}'
+  command: grep /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}} -e '^IPADDR.*'
+  ignore_errors: True
+  register: is_static
+  when: ansible_os_family == "RedHat"
+
+- name: restart network on Debian
+  service:
+    name: networking
+    state: restarted
+  register: net_restart_result
+  ignore_errors: True
+  when: ansible_os_family == "Debian" and is_static|failed
+
+- name: restart network on RedHat
+  service:
+    name: network
+    state: restarted
+  register: net_restart_result
+  ignore_errors: True
+  when: ansible_os_family == "RedHat" and is_static|failed

@@ -1,0 +1,80 @@
+---
+#check hostname
+
+
+# tasks file for hostname
+- hostname:
+    name: "{{ host_name }}"
+  when: host_name is defined
+
+- name: ping all hosts
+  ping:
+
+- name: changing 127.0.1.1 in /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: '127.0.1.1 {{host_name}} {{ host_name }}.hi.inet'
+    owner: root
+    group: root
+    mode: 0644
+  ignore_errors: True
+  when: host_name is defined
+
+- name: check static IP
+  #lineinfile:
+    #path: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+    #regexp: '^IPADDR'
+    #line: 'IPADDR={{facter_ipaddress}}'
+  command: grep /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}} -e '^IPADDR.*'
+  ignore_errors: True
+  register: is_static
+
+- name: restart network on Debian
+  service:
+    name: networking
+    state: restarted
+  register: net_restart_result
+  ignore_errors: True
+  when: ansible_os_family == "Debian" and is_static|failed
+
+- name: restart network on RedHat
+  service:
+    name: network
+    state: restarted
+  register: net_restart_result
+  ignore_errors: True
+  when: ansible_os_family == "RedHat" and is_static|failed
+
+#- name: delete old configuration
+#  find:
+#    paths: "/etc/sysconfig/network-scripts"
+#    patterns: "ifcfg-e*"
+#  register: files_to_delete
+#  when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+#- name: delele old configuration step 2
+#  file:
+#    path: "{{ item.path }}"
+#    state: absent
+#  with_items: files_to_delete.files
+#  when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+#- name: delete old configuration
+#  command: rm -rf /etc/sysconfig/network-scripts/ifcfg-e*  
+
+#- name: copy interface configuration 
+#  copy:
+#    src: /etc/ansible/ifcfg-standard
+#    dest: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+#    owner: root
+#    group: root
+#    mode: 0644
+#  when: net_restart_result|failed and ansible_os_family == "RedHat"
+
+#- name: editing file configuration
+#  lineinfile: 
+#    path: /etc/sysconfig/network-scripts/ifcfg-{{ansible_default_ipv4.alias}}
+#    regexp: '^DEVICE.*'
+#    line: 'DEVICE={{ansible_default_ipv4.alias}}'
+#  when: net_restart_result|failed and ansible_os_family == "RedHat"
